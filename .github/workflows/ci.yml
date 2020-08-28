@@ -1,7 +1,8 @@
 name: ci
 on:
   push:
-    branches-ignore: [release/**]
+    branches-ignore: 
+      - release/*
 jobs:
   test:
     name: build and test
