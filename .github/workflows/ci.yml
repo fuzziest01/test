@@ -1,9 +1,7 @@
+name: ci
 on:
   push:
     branches-ignore: [release/**]
-
-name: ci
-
 jobs:
   test:
     name: build and test
@@ -21,7 +19,6 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-
   fmt:
     name: rustfmt
     runs-on: ubuntu-latest
@@ -37,7 +34,6 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-
   clippy:
     name: clippy
     runs-on: ubuntu-latest
