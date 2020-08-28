@@ -2,28 +2,11 @@ on:
   push:
     branches-ignore: [release/**]
 
-name: Continuous integration
+name: ci
 
 jobs:
-  check:
-    name: Check
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-
   test:
-    name: Test Suite
+    name: build and test
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
@@ -40,7 +23,7 @@ jobs:
           command: test
 
   fmt:
-    name: Rustfmt
+    name: rustfmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -56,7 +39,7 @@ jobs:
           args: --all -- --check
 
   clippy:
-    name: Clippy
+    name: clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
