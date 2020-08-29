@@ -75,10 +75,11 @@ jobs:
           dest: ${{ matrix.asset_name }}
 
       - name: upload binaries
-        uses: svenstaro/upload-release-action@v1-release
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag: ${{ needs.release.outputs.tag }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ needs.release.outputs.upload_url }}
-          file: ${{ matrix.asset_name }}
+          asset_path: ${{ matrix.asset_name }}
           asset_name: ${{ matrix.asset_name }}
+          asset_content_type: application/zip
