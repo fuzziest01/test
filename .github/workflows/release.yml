@@ -9,13 +9,17 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: generate tag and changelog
         id: changelog
         run: |
           npx standard-version --skip.commit
           sed '1,7d' CHANGELOG.md > CHANGELOG.md
-          git push --follow-tags ${{ github.ref }} 
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git push --follow-tags ${{ github.ref }}
           echo ::set-output name=tag::$(git describe HEAD)
 
       - name: create release
