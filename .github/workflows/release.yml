@@ -19,7 +19,7 @@ jobs:
           git config user.email github-actions@github.com
           npx standard-version --skip.commit
           sed '1,7d' CHANGELOG.md > CHANGELOG.md
-          git push --follow-tags ${{ github.ref }}
+          git push --tags
           echo ::set-output name=tag::$(git describe HEAD)
 
       - name: create release
