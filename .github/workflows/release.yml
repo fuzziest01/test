@@ -1,0 +1,79 @@
+name: automated release
+on:
+  push:
+    branches:
+      - release-*.*
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: generate tag and changelog
+        id: changelog
+        run: |
+          npx standard-version --skip.commit
+          sed '1,7d' CHANGELOG.md > CHANGELOG.md
+          git push --follow-tags ${{ github.ref }} 
+          echo ::set-output name=tag::$(git describe HEAD)
+
+      - name: create release
+        id: release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ changelog.outputs.tag }}
+          release_name: Test ${{ changelog.outputs.tag }}
+          body: CHANGELOG.md
+          draft: true
+          prerelease: true
+    outputs:
+      upload_url: ${{ steps.release.outputs.upload_url }}
+
+  upload:
+    name: publish for ${{ matrix.os }}
+    needs: release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        name: [linux, windows, macos]
+        include:
+          - name: linux
+            os: ubuntu-latest
+            artifact_name: temp
+            asset_name: temp-linux-x64.zip
+          - name: windows
+            os: windows-latest
+            artifact_name: temp.exe
+            asset_name: temp-windows-x64.zip
+          - name: macos
+            os: macos-latest
+            artifact_name: temp
+            asset_name: temp-macos-x64.zip
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+
+      - name: build (release)
+        run: cargo build --release --locked
+
+      - name: compress
+        uses: papeloto/action-zip@v1
+        with:
+          files: target/release/${{ matrix.artifact_name }}
+          dest: ${{ matrix.asset_name }}
+
+      - name: upload binaries
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          upload_url: ${{ release.outputs.upload_url }}
+          file: ${{ matrix.asset_name }}
+          asset_name: ${{ matrix.asset_name }}
+          tag: ${{ github.ref }}

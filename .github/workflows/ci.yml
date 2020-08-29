@@ -2,7 +2,7 @@ name: ci
 on:
   push:
     branches-ignore: 
-      - release/*
+      - release-*.*
 jobs:
   test:
     name: build and test
