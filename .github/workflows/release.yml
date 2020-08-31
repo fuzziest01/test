@@ -1,85 +1,57 @@
-name: automated release
+# set this to whatever branch you release from or change the trigger completely
 on:
   push:
     branches:
       - release-*.*
+
 jobs:
-  release:
+  changelog:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
-      - name: generate tag and changelog
-        id: changelog
+      - name: generate release body
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          npx standard-version --skip.commit
-          sed -i '1,7d' CHANGELOG.md
-          git push --tags
-          echo ::set-output name=tag::$(git describe HEAD)
+          npx standard-version --skip.commit --skip.tag -i RELEASE_BODY.md
+      - uses: actions/upload-artifact@master
+        with:
+          name: release-body
+          path: RELEASE_BODY.md
+
+  release:
+    runs-on: ubuntu-latest
+    needs: changelog
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+    
+      - name: set git config
+      - run: |
+          git config user.name release
+          git config user.mail release@example.com
+
+      - name: bump files and generate tag
+        # optional: --skip.changelog --skip.commit
+        run: |
+          npx standard-version --skip.changelog --skip.commit
+
+      - name: push updates
+        id: push
+        run: |
+          git push --follow-tags
+          echo ::set-output name=tag_name::$(git describe HEAD --abbrev=0)
+
+      - uses: actions/download-artifact@master
+        with:
+          name: release-body
 
       - name: create release
-        id: release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.changelog.outputs.tag }}
-          release_name: Test ${{ steps.changelog.outputs.tag }}
-          body_path: CHANGELOG.md
-          draft: true
-          prerelease: true
-    outputs:
-      tag: ${{ steps.changelog.outputs.tag }}
-      upload_url: ${{ steps.release.outputs.upload_url }}
-
-  upload:
-    name: publish for ${{ matrix.os }}
-    needs: release
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        name: [linux, windows, macos]
-        include:
-          - name: linux
-            os: ubuntu-latest
-            artifact_name: temp
-            asset_name: temp-linux-x64.zip
-          - name: windows
-            os: windows-latest
-            artifact_name: temp.exe
-            asset_name: temp-windows-x64.zip
-          - name: macos
-            os: macos-latest
-            artifact_name: temp
-            asset_name: temp-macos-x64.zip
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-
-      - name: build (release)
-        run: cargo build --release --locked
-
-      - name: compress
-        uses: papeloto/action-zip@v1
-        with:
-          files: target/release/${{ matrix.artifact_name }}
-          dest: ${{ matrix.asset_name }}
-
-      - name: upload binaries
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: ${{ matrix.asset_name }}
-          asset_name: ${{ matrix.asset_name }}
-          asset_content_type: application/zip
+          release_name: release ${{ steps.push.outputs.tag_name }}
+          tag_name: ${{ steps.push.outputs.tag_name }}
+          body_path: RELEASE_BODY.md
